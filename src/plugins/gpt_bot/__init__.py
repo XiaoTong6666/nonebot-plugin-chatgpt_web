@@ -52,16 +52,16 @@ def chushihua_liulanqi_jincheng() -> bool:
     try:
         if yichushihua:
           return True
-        logger.info("正在初始化 Chromium 浏览器进程...")
+        logger.info("在初始化 Chromium 进程喵ing...")
         co = ChromiumOptions().set_browser_path(peizhi.chromium_path)
         co.set_user_data_path(os.path.expanduser("~/.config/chromium"))
         liulanqi = Chromium(co)
         yichushihua = True
-        logger.info("Chromium 浏览器进程初始化完成")
+        logger.info("Chromium 进程初始化完成了喵~")
         return True
 
     except Exception as e:
-        logger.error(f"浏览器进程初始化失败：{e}")
+        logger.error(f"浏览器进程初始化失败喵qwq：{e}")
         guanbi_liulanqi()
         return True
 
@@ -69,17 +69,17 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
     """根据对话ID获取或创建新的标签页"""
     global liulanqi
     if not yichushihua or not liulanqi:
-        logger.error("浏览器进程未初始化，无法创建标签页")
+        logger.error("浏览器进程还没初始化，没法创建标签页喵qwq")
         return None
     if duihua_id in duihua_biaoqian_map:
         return duihua_biaoqian_map[duihua_id]
 
     try:
-        logger.info(f"为对话 {duihua_id} 创建新的 ChatGPT 标签页...")
+        logger.info(f"在给 {duihua_id} 创建 ChatGPT 标签页喵ing...")
         biaoqian = liulanqi.new_tab(url="https://chatgpt.com")
         biaoqian.ele("#prompt-textarea", timeout=20)
 
-        # JS注入拦截脚本（保持原逻辑不改动）
+        # JS注入拦截脚本（核心）
         zhuru_js = r"""
           (async () => {
             window.zuihouHuifu = "";
@@ -155,20 +155,20 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
         biaoqian.run_js(zhuru_js)
 
         duihua_biaoqian_map[duihua_id] = biaoqian
-        logger.info(f"为对话 {duihua_id} 创建标签页成功")
+        logger.info(f"给 {duihua_id} 创建页面成功了喵！")
         return biaoqian
 
     except Exception as e:
-        logger.error(f"为对话 {duihua_id} 创建标签页失败: {e}")
+        logger.error(f"给 {duihua_id} 创建页面失败了喵qwq: {e}")
         return None
 
 def tiwen_gpt(wenti: str, biaoqian: ChromiumPage) -> Optional[str]:
     """同步提问 ChatGPT"""
     if not biaoqian:
-        raise Exception("无效的标签页对象")
+        raise Exception("这是无效的标签页对象喵")
 
     try:
-        logger.info(f"提问: {wenti}")
+        logger.info(f"输入来了喵！: {wenti}")
         wenti_anquan = (
             wenti.replace("\\", "\\\\")
             .replace("`", "\\`")
@@ -208,7 +208,7 @@ def tiwen_gpt(wenti: str, biaoqian: ChromiumPage) -> Optional[str]:
         while time.time() - start < peizhi.response_timeout:
             neirong = biaoqian.run_js("return window.zuihouHuifu || '';")
             if neirong and neirong != zuihou_neirong:
-                logger.info(f"更新内容: {neirong[:50]}...")
+                logger.info(f"获取到了喵！: {neirong[:50]}...")
                 zuihou_neirong = neirong
                 biaoqian.console.clear()
 
@@ -230,7 +230,7 @@ def tiwen_gpt(wenti: str, biaoqian: ChromiumPage) -> Optional[str]:
         return zuihou_neirong or None
 
     except Exception as e:
-        logger.error(f"提问失败: {e}")
+        logger.error(f"提问失败了喵qwq: {e}")
         return None
 
 
@@ -241,12 +241,12 @@ def guanbi_liulanqi():
         if liulanqi:
             liulanqi.quit()
     except Exception as e:
-        logger.warning(f"关闭浏览器出错: {e}")
+        logger.warning(f"关闭浏览器出错了喵qwq: {e}")
     finally:
         liulanqi = None
         duihua_biaoqian_map.clear()
         yichushihua = False
-        logger.info("ChatGPT 处理器已关闭")
+        logger.info("ChatGPT 处理器已关闭了喵~")
 
 
 @qudong.on_startup
@@ -254,7 +254,7 @@ async def kaishi_gpt():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
         success = await loop.run_in_executor(pool, chushihua_liulanqi_jincheng)
-    logger.info("ChatGPT 初始化成功" if success else "ChatGPT 初始化失败")
+    logger.info("初始化成功了喵~" if success else "初始化失败了喵qwq")
 
 
 @qudong.on_shutdown
@@ -262,13 +262,13 @@ async def guanbi_gpt():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
         await loop.run_in_executor(pool, guanbi_liulanqi)
-    logger.info("ChatGPT 已关闭")
+    logger.info("已关闭喵~")
 
 
 async def handle_gpt_request(matcher: Matcher, event: Event, wenti: str):
     """处理GPT请求、获取回答并发送"""
     if not yichushihua:
-        await matcher.finish("ChatGPT 模块未准备就绪")
+        await matcher.finish("模块还没就绪喵~")
 
     try:
         loop = asyncio.get_event_loop()
@@ -277,22 +277,22 @@ async def handle_gpt_request(matcher: Matcher, event: Event, wenti: str):
             dangqian_biaoqian = await loop.run_in_executor(pool, huoqu_huo_chuangjian_biaoqian, duihua_id)
 
         if not dangqian_biaoqian:
-            await matcher.finish("创建 ChatGPT 会话失败，请检查后台日志")
+            await matcher.finish("创建会话失败了喵qwq")
 
-        logger.info(f"开始为对话 {duihua_id} 处理问题: {wenti}")
+        logger.info(f"要开始为对话 {duihua_id} 处理问题了喵~: {wenti}")
         with concurrent.futures.ThreadPoolExecutor() as pool:
             huida = await loop.run_in_executor(pool, tiwen_gpt, wenti, dangqian_biaoqian)
 
-        logger.info(f"获得回答: {huida}")
+        logger.info(f"尝试发送喵！: {huida}")
 
         if huida:
             neirong = MessageFormatter.gezhihua_gpt_huida(huida, wenti)
             await matcher.finish(neirong)
         else:
-            await matcher.finish("ChatGPT 未返回有效回答")
+            await matcher.finish("没能返回有效回答喵qwq")
 
     except Exception as e:
-        logger.error(f"GPT 处理失败: {e}")
+        logger.error(f"处理失败了喵qwq: {e}")
         # await matcher.finish("GPT 模块异常")
 
 # 响应器1：处理群聊中的 /gpt 命令
@@ -307,7 +307,7 @@ async def gpt_group_handler(matcher: Matcher, event: V11MessageEvent, args: Mess
     """群聊中的 /gpt 命令处理器"""
     wenti = args.extract_plain_text().strip()
     if not wenti:
-        await matcher.finish("不能发送单个标点符号")
+        await matcher.finish("发送空白内容打咩")
     # 在内部调用封装好的核心逻辑
     await handle_gpt_request(matcher, event, wenti)
 
