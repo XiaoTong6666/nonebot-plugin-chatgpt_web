@@ -9,7 +9,9 @@ class MessageFormatter:
     """消息格式化器"""
 
     @staticmethod
-    def gezhihua_gpt_huida(huida: str, wenti: str = "", zui_da_changdu: int = 2000) -> str:
+    def gezhihua_gpt_huida(
+        huida: str, wenti: str = "", zui_da_changdu: int = 2000
+    ) -> str:
         """
         格式化GPT响应消息
 
@@ -29,14 +31,16 @@ class MessageFormatter:
 
         # 如果响应过长，进行智能截断
         if len(qingli_huida) > zui_da_changdu:
-            qingli_huida = MessageFormatter._zhineng_jieduan(qingli_huida, zui_da_changdu)
+            qingli_huida = MessageFormatter._zhineng_jieduan(
+                qingli_huida, zui_da_changdu
+            )
 
         return qingli_huida
 
     @staticmethod
     def _qingli_huida(huida: str) -> str:
         """清理响应文本"""
-        qingli = re.sub(r'\n\s*\n\s*\n', '\n\n', huida)
+        qingli = re.sub(r"\n\s*\n\s*\n", "\n\n", huida)
         qingli = qingli.strip()
         if qingli.startswith('"') and qingli.endswith('"'):
             qingli = qingli[1:-1].strip()
@@ -54,7 +58,7 @@ class MessageFormatter:
             return wenzi[:zui_da_changdu]
 
         duan_wenzi = wenzi[:kexy_changdu]
-        jiezhi_fuhao = ['.', '。', '!', '！', '?', '？', '\n\n']
+        jiezhi_fuhao = [".", "。", "!", "！", "?", "？", "\n\n"]
         zuijia_qie = -1
 
         for fuhao in jiezhi_fuhao:
@@ -65,7 +69,7 @@ class MessageFormatter:
         if zuijia_qie > 0:
             return wenzi[:zuijia_qie].rstrip() + jieduan_tishi
         else:
-            last_space = duan_wenzi.rfind(' ')
+            last_space = duan_wenzi.rfind(" ")
             if last_space > kexy_changdu * 0.8:
                 return wenzi[:last_space] + jieduan_tishi
             else:
@@ -83,7 +87,7 @@ class MessageFormatter:
             "no_response": "ChatGPT未返回回答",
             "network_error": "网络连接出错",
             "login_required": "需要登录ChatGPT账号",
-            "unknown": "未知错误"
+            "unknown": "未知错误",
         }
 
         base_msg = cuowu_dict.get(cuowu_leixing, cuowu_dict["unknown"])
@@ -100,7 +104,7 @@ class MessageFormatter:
             "ready": "🟢",
             "connecting": "🔄",
             "error": "🔴",
-            "offline": "⚫"
+            "offline": "⚫",
         }
 
         biao_qing = emoji_dict.get(zhuangtai, "ℹ️")

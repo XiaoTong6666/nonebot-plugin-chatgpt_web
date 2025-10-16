@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
+
 class Config(BaseModel):
     """GPT Bot Plugin Config - 增强调试版本"""
 
@@ -47,4 +48,4 @@ class Config(BaseModel):
     # 新增调试选项
     verbose_logging: bool = True  # 详细日志
     save_screenshots: bool = True  # 保存截图用于调试
-    console_output: bool = True   # 输出浏览器控制台信息
+    console_output: bool = True  # 输出浏览器控制台信息
