@@ -11,31 +11,50 @@ class MessageFormatter:
     @staticmethod
     def gezhihua_gpt_huida(
         huida: str, wenti: str = "", zui_da_changdu: int = 2000
-    ) -> str:
+    ) -> list[str]:
         """
-        格式化GPT响应消息
+        格式化GPT响应消息，如果过长则分割成列表。
 
         Args:
             huida: GPT的原始响应
             wenti: 用户的问题
-            zui_da_changdu: 最大消息长度
+            zui_da_changdu: 每条消息的最大长度
 
         Returns:
-            格式化后的消息
+            格式化后的消息列表
         """
         if not huida or not huida.strip():
-            return "❌ ChatGPT未返回有效回答"
+            return ["❌ ChatGPT未返回有效回答"]
 
-        # 清理响应文本
         qingli_huida = MessageFormatter._qingli_huida(huida)
 
-        # 如果响应过长，进行智能截断
-        if len(qingli_huida) > zui_da_changdu:
-            qingli_huida = MessageFormatter._zhineng_jieduan(
-                qingli_huida, zui_da_changdu
-            )
+        if len(qingli_huida) <= zui_da_changdu:
+            return [qingli_huida]
 
-        return qingli_huida
+        xiaoxi_liebiao = []
+        shengyu_wenzi = qingli_huida
+        jiezhi_fuhao = ["\n\n", ". ", "。", "! ", "！", "? ", "？", "\n", " "]
+
+        while len(shengyu_wenzi) > zui_da_changdu:
+            qiege_dian = -1
+            duan_wenzi = shengyu_wenzi[:zui_da_changdu]
+
+            for fuhao in jiezhi_fuhao:
+                pos = duan_wenzi.rfind(fuhao)
+                if pos != -1:
+                    qiege_dian = pos + len(fuhao)
+                    break
+
+            if qiege_dian == -1:
+                qiege_dian = zui_da_changdu
+
+            xiaoxi_liebiao.append(shengyu_wenzi[:qiege_dian].strip())
+            shengyu_wenzi = shengyu_wenzi[qiege_dian:].strip()
+
+        if shengyu_wenzi:
+            xiaoxi_liebiao.append(shengyu_wenzi)
+
+        return xiaoxi_liebiao
 
     @staticmethod
     def _qingli_huida(huida: str) -> str:
@@ -46,9 +65,11 @@ class MessageFormatter:
             qingli = qingli[1:-1].strip()
         return qingli
 
+    # 注意：_zhineng_jieduan 方法现在已经不再被使用，您可以选择性地删除它
     @staticmethod
     def _zhineng_jieduan(wenzi: str, zui_da_changdu: int) -> str:
         """智能截断文本，尽量在句子边界截断"""
+        # (这个方法的代码保持不变)
         if len(wenzi) <= zui_da_changdu:
             return wenzi
 
@@ -74,6 +95,7 @@ class MessageFormatter:
                 return wenzi[:last_space] + jieduan_tishi
             else:
                 return duan_wenzi + jieduan_tishi
+
 
     @staticmethod
     def gezhihua_cuowu_xiaoxi(cuowu_leixing: str, xiangqing: str = "") -> str:

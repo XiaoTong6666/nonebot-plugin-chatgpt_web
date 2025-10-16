@@ -49,3 +49,8 @@ class Config(BaseModel):
     verbose_logging: bool = True  # 详细日志
     save_screenshots: bool = True  # 保存截图用于调试
     console_output: bool = True  # 输出浏览器控制台信息
+
+    # 群聊共享模式开关
+    # 如果设置为 True，则一个群内的所有人共用一个ChatGPT会话（标签页）
+    # 如果设置为 False，则群内的每个人都有自己独立的会话（标签页）
+    group_shared_mode: bool = True

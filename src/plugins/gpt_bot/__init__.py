@@ -2,17 +2,18 @@ import os
 import time
 import asyncio
 import concurrent.futures
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 from nonebot import on_command, get_plugin_config, get_driver, on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters import Message, Event, Bot
 from nonebot.params import CommandArg
 from nonebot.matcher import Matcher
 from nonebot.log import logger
+from nonebot.rule import Rule
 from DrissionPage import Chromium, ChromiumOptions, ChromiumPage
 from .config import Config
 from .message_formatter import MessageFormatter
-from nonebot.adapters.onebot.v11 import MessageEvent as V11MessageEvent
+from nonebot.adapters.onebot.v11 import MessageEvent as V11MessageEvent, Bot as V11Bot
 
 __plugin_meta__ = PluginMetadata(
     name="gpt-bot",
@@ -30,6 +31,7 @@ liulanqi: Optional[Chromium] = None
 # biaoqian = None
 duihua_biaoqian_map: Dict[str, ChromiumPage] = {}
 yichushihua = False
+locked_sessions: Set[str] = set()
 
 def is_private_message(event: V11MessageEvent) -> bool:
     #真私聊
@@ -43,8 +45,26 @@ def is_private_message(event: V11MessageEvent) -> bool:
     return is_true_private or is_temp_session
 
 def is_group_message(event: V11MessageEvent) -> bool:
-    # 规则：判断消息是否来自群聊
-    return event.message_type == "group"
+    """规则：判断消息是否来自真实的群聊（排除临时会话）"""
+    return (
+        event.message_type == "group" and
+        hasattr(event, 'group_id') and
+        event.user_id != event.group_id
+    )
+
+def is_mention_or_reply_to_me(bot: V11Bot, event: V11MessageEvent) -> bool:
+    """
+    规则：判断消息是否 @机器人 或 回复机器人
+    """
+    # 检查消息中是否有 @我 的信息
+    if event.is_tome():
+        return True
+
+    # 检查消息是否回复了我
+    if event.reply and event.reply.sender.user_id == int(bot.self_id):
+        return True
+
+    return False
 
 def chushihua_liulanqi_jincheng() -> bool:
     """仅同步初始化浏览器进程，不创建标签页"""
@@ -79,10 +99,13 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
         biaoqian = liulanqi.new_tab(url="https://chatgpt.com")
         biaoqian.ele("#prompt-textarea", timeout=20)
 
-        # JS注入拦截脚本（核心）
         zhuru_js = r"""
           (async () => {
+            // 用于最终回复给用户的干净文本
             window.zuihouHuifu = "";
+            // 用于调试的完整原始日志
+            window.zuihouHuifu_raw_log = "";
+
             const yuanshiFetch = window.fetch;
             window.fetch = async (...canshu) => {
               const [lianjie, xuanxiang] = canshu;
@@ -91,8 +114,16 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                 const fuben = fanhui.clone();
                 const duzhe = fuben.body.getReader();
                 const bianmaqi = new TextDecoder("utf-8");
-                let quanwen = "";
+
+                // 【双轨制】定义两个变量
+                let quanwen = "";           // 干净文本
+                let quanwen_raw = "";       // 原始文本
+
                 let buffer = "";
+
+                // 用于过滤垃圾字符和引用标记的正则表达式
+                const garbageRegex = /[\uE000-\uF8FF]|(cite|turn|search|news|academ\w*)(\d*)/g;
+
                 try {
                   while (true) {
                     const { value: zhi, done: wancheng } = await duzhe.read();
@@ -102,50 +133,72 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                     if (!buffer.endsWith('\n')) buffer = hangshu.pop();
                     else buffer = "";
                     for (const hangRaw of hangshu) {
-                      if (!hangRaw) continue;
-                      const hang = hangRaw.replace(/\r$/, '');
-                      console.log('[raw_line]', hang);
-                      if (!hang.startsWith('data: ') || hang.includes('[DONE]')) continue;
+                      if (!hangRaw || !hangRaw.startsWith('data: ') || hangRaw.includes('[DONE]')) continue;
+
                       try {
-                        const shuju = JSON.parse(hang.replace(/^data:\s*/, ''));
-                        if (shuju?.o === 'patch' && Array.isArray(shuju.v)) {
-                          for (const i of shuju.v) {
+                        const shuju = JSON.parse(hangRaw.replace(/^data:\s*/, ''));
+                        let text_piece = '';
+                        let text_piece_raw = ''; // 【新增】原始片段
+
+                        const operations = shuju.v || (shuju.o === 'patch' ? shuju.v : null);
+
+                        // --- 轨道一：精确提取干净文本 ---
+                        if (Array.isArray(operations)) {
+                            for (const op of operations) {
+                                if (op.o === 'append' && (op.p === '/message/content/parts/0' || op.p === '/message/content/text') && typeof op.v === 'string') {
+                                    text_piece += op.v;
+                                }
+                            }
+                        } else if (typeof shuju.v === 'string') {
+                            text_piece = shuju.v;
+                        }
+
+                        if (text_piece) {
+                            const clean_piece = text_piece.replace(garbageRegex, '');
+                            if (clean_piece) {
+                                quanwen += clean_piece;
+                            }
+                        }
+
+                        // --- 轨道二：捕获所有文本片段用于调试 ---
+                        // 这是一个更宽松的捕获逻辑，类似于您最初的版本
+                        if (Array.isArray(operations)) {
+                          for (const i of operations) {
                             if (i?.o === 'append' && typeof i.v === 'string') {
-                              quanwen += i.v;
-                              console.log('[patch append追加]', i.v);
+                              text_piece_raw += i.v;
                             }
                           }
-                        } else if (Array.isArray(shuju?.v)) {
-                          for (const i of shuju.v) {
-                            if (i?.o === 'append' && typeof i.v === 'string') {
-                              quanwen += i.v;
-                              console.log('[delta append追加]', i.v);
-                            }
-                          }
-                        } else if (shuju?.v?.message?.content?.parts?.[0] && shuju.v.message.author.role === 'assistant') {
-                          quanwen += shuju.v.message.content.parts[0];
-                          console.log('[message.parts追加]', shuju.v.message.content.parts[0]);
+                        } else if (shuju?.v?.message?.content?.parts?.[0]) {
+                          text_piece_raw += shuju.v.message.content.parts[0];
                         } else if (typeof shuju?.v === 'string') {
-                          quanwen += shuju.v;
-                          console.log('[v字符串追加]', shuju.v);
+                          text_piece_raw += shuju.v;
                         }
+
+                        if (text_piece_raw) {
+                            quanwen_raw += text_piece_raw;
+                        }
+
+                        // --- 结束流处理 ---
                         if (shuju?.type === 'message_stream_complete' || shuju?.message?.status === 'finished_successfully') {
-                          window.zuihouHuifu = quanwen;
-                          console.log('[流结束 by type]', window.zuihouHuifu);
+                          window.zuihouHuifu = quanwen.trim();
+                          window.zuihouHuifu_raw_log = quanwen_raw.trim();
                         }
-                      } catch (cuowu) {
-                        console.warn('[解析失败]', hang, cuowu?.message);
-                      }
+                      } catch (cuowu) {}
                     }
                   }
-                } catch (e) {
-                  console.error('[reader异常]', e?.message);
-                }
+                } catch (e) {}
+
                 if (quanwen) {
-                  window.zuihouHuifu = quanwen;
-                  console.log('[流结束兜底]', window.zuihouHuifu);
+                  window.zuihouHuifu = quanwen.trim();
                 }
-                console.log('[完整内容]', window.zuihouHuifu);
+                if (quanwen_raw) {
+                  window.zuihouHuifu_raw_log = quanwen_raw.trim();
+                }
+
+                // 【可选】在控制台同时打印干净版和原始版，方便对比
+                console.log('最终干净内容:', window.zuihouHuifu);
+                console.log('最终原始日志:', window.zuihouHuifu_raw_log);
+
                 return fanhui;
               }
               return yuanshiFetch(...canshu);
@@ -179,7 +232,7 @@ def tiwen_gpt(wenti: str, biaoqian: ChromiumPage) -> Optional[str]:
           (async () => {
               const bianjiqi = document.querySelector('#prompt-textarea');
               if (!bianjiqi) throw new Error("找不到输入框 #prompt-textarea");
-              bianjiqi.innerText = "__CONTENT__";
+              bianjiqi.innerText = `__CONTENT__`;
               bianjiqi.dispatchEvent(new Event('input', { bubbles: true }));
               bianjiqi.dispatchEvent(new Event('change', { bubbles: true }));
               await new Promise(r => setTimeout(r, 500));
@@ -265,14 +318,34 @@ async def guanbi_gpt():
     logger.info("已关闭喵~")
 
 
-async def handle_gpt_request(matcher: Matcher, event: Event, wenti: str):
-    """处理GPT请求、获取回答并发送"""
+async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: str):
+    """处理GPT请求、获取回答并发送（支持群聊共享模式）"""
+
+    # --- 【核心修改点】根据配置决定会话ID ---
+    duihua_id: str
+    is_real_group = event.message_type == "group" and event.user_id != event.group_id
+
+    if is_real_group and peizhi.group_shared_mode:
+        # 如果是真实群聊，并且开启了共享模式，则使用群号作为ID
+        duihua_id = f"group_{event.group_id}"
+    else:
+        # 其他情况（私聊、临时会话、或群聊关闭共享模式），使用原来的会话ID
+        duihua_id = event.get_session_id()
+    # --- 修改结束 ---
+
+    # 检查会话是否已被锁定
+    if duihua_id in locked_sessions:
+        await matcher.finish("本喵还在思考上一个问题，请稍等一下喵~")
+        return
+
     if not yichushihua:
         await matcher.finish("模块还没就绪喵~")
 
+    # 加锁，并使用 try...finally 确保锁一定会被释放
     try:
+        locked_sessions.add(duihua_id)
+
         loop = asyncio.get_event_loop()
-        duihua_id = event.get_session_id()
         with concurrent.futures.ThreadPoolExecutor() as pool:
             dangqian_biaoqian = await loop.run_in_executor(pool, huoqu_huo_chuangjian_biaoqian, duihua_id)
 
@@ -286,20 +359,36 @@ async def handle_gpt_request(matcher: Matcher, event: Event, wenti: str):
         logger.info(f"尝试发送喵！: {huida}")
 
         if huida:
-            neirong = MessageFormatter.gezhihua_gpt_huida(huida, wenti)
-            await matcher.finish(neirong)
+            neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(huida, wenti)
+            for i, neirong in enumerate(neirong_liebiao):
+                if i < len(neirong_liebiao) - 1:
+                    await matcher.send(neirong)
+                    await asyncio.sleep(1)
+                else:
+                    await matcher.finish(neirong)
         else:
             await matcher.finish("没能返回有效回答喵qwq")
 
     except Exception as e:
         logger.error(f"处理失败了喵qwq: {e}")
-        # await matcher.finish("GPT 模块异常")
+    finally:
+        if duihua_id in locked_sessions:
+            locked_sessions.remove(duihua_id)
+            logger.info(f"对话 {duihua_id} 的锁已释放喵~")
 
 # 响应器1：处理群聊中的 /gpt 命令
 gpt_group = on_command("gpt", rule=is_group_message, priority=10, block=True)
 
 # 响应器2：处理私聊中的所有消息，创建一个新的 Matcher，不需要命令前缀
 gpt_private = on_message(rule=is_private_message, priority=99, block=True)
+
+# 响应器3：处理群聊中的 @ 和 回复
+gpt_mention = on_message(
+    # 【核心修改】使用 Rule() 包装函数后再进行组合
+    rule=Rule(is_group_message) & Rule(is_mention_or_reply_to_me),
+    priority=12,
+    block=True
+)
 
 # 处理器1：绑定到 gpt_group 响应器
 @gpt_group.handle()
@@ -321,4 +410,29 @@ async def gpt_private_handler(matcher: Matcher, event: V11MessageEvent):
     if not wenti or (command_start and wenti.startswith(tuple(command_start))):
         return
     # 在内部调用封装好的核心逻辑
+    await handle_gpt_request(matcher, event, wenti)
+
+@gpt_mention.handle()
+async def gpt_mention_handler(matcher: Matcher, bot: V11Bot, event: V11MessageEvent):
+    """群聊中 @机器人 或 回复机器人 的处理器"""
+    # 提取纯文本消息
+    wenti = event.get_plaintext().strip()
+
+    # --- 清理 @信息 ---
+    # 获取机器人的所有昵称配置
+    nicknames = get_driver().config.nickname
+    if isinstance(nicknames, str):
+        nicknames = {nicknames}
+
+    # 移除 @昵称 的部分
+    for nickname in nicknames:
+        if wenti.startswith(f"@{nickname}"):
+            wenti = wenti.replace(f"@{nickname}", "", 1).strip()
+            break # 找到并移除后就停止
+
+    # 如果清理后问题为空，则不响应
+    if not wenti:
+        return
+
+    # 调用封装好的核心逻辑
     await handle_gpt_request(matcher, event, wenti)
