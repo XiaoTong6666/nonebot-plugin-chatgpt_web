@@ -113,7 +113,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                               console.log('[delta append追加]', i.v);
                             }
                           }
-                        } else if (shuju?.v?.message?.content?.parts?.[0]) {
+                        } else if (shuju?.v?.message?.content?.parts?.[0] && shuju.v.message.author.role === 'assistant') {
                           quanwen += shuju.v.message.content.parts[0];
                           console.log('[message.parts追加]', shuju.v.message.content.parts[0]);
                         } else if (typeof shuju?.v === 'string') {
