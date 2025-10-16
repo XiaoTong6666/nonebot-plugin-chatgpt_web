@@ -1,4 +1,4 @@
-# g
+# nonebot-plugin-chatgpt_web
 
 ## How to start
 
