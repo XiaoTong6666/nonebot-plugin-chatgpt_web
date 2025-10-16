@@ -2,22 +2,22 @@ import os
 import time
 import asyncio
 import concurrent.futures
-from typing import Optional
-from nonebot import on_command, get_plugin_config, get_driver
+from typing import Optional, Dict
+from nonebot import on_command, get_plugin_config, get_driver, on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters import Message, Event, Bot
 from nonebot.params import CommandArg
 from nonebot.matcher import Matcher
 from nonebot.log import logger
 from DrissionPage import Chromium, ChromiumOptions, ChromiumPage
-from typing import Optional, Dict
 from .config import Config
 from .message_formatter import MessageFormatter
+from nonebot.adapters.onebot.v11 import MessageEvent as V11MessageEvent
 
 __plugin_meta__ = PluginMetadata(
     name="gpt-bot",
     description="ChatGPT自动化问答插件",
-    usage="/gpt <问题>",
+    usage="群聊: /gpt <问题> | 私聊: 直接发送问题",
     type="application",
     config=Config,
 )
@@ -31,6 +31,20 @@ liulanqi: Optional[Chromium] = None
 duihua_biaoqian_map: Dict[str, ChromiumPage] = {}
 yichushihua = False
 
+def is_private_message(event: V11MessageEvent) -> bool:
+    #真私聊
+    is_true_private = event.message_type == "private"
+    #双id同
+    is_temp_session = (
+        event.message_type == "group" and
+        event.user_id == event.group_id
+    )
+
+    return is_true_private or is_temp_session
+
+def is_group_message(event: V11MessageEvent) -> bool:
+    # 规则：判断消息是否来自群聊
+    return event.message_type == "group"
 
 def chushihua_liulanqi_jincheng() -> bool:
     """仅同步初始化浏览器进程，不创建标签页"""
@@ -39,18 +53,13 @@ def chushihua_liulanqi_jincheng() -> bool:
         if yichushihua:
           return True
         logger.info("正在初始化 Chromium 浏览器进程...")
-
         co = ChromiumOptions().set_browser_path(peizhi.chromium_path)
         co.set_user_data_path(os.path.expanduser("~/.config/chromium"))
-
         liulanqi = Chromium(co)
         yichushihua = True
         logger.info("Chromium 浏览器进程初始化完成")
         return True
-        # biaoqian = liulanqi.latest_tab
-        # biaoqian.get("https://chatgpt.com")
-        # biaoqian.console.start()
-        # biaoqian.ele("#prompt-textarea", timeout=10)
+
     except Exception as e:
         logger.error(f"浏览器进程初始化失败：{e}")
         guanbi_liulanqi()
@@ -149,13 +158,8 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
         logger.info(f"为对话 {duihua_id} 创建标签页成功")
         return biaoqian
 
-        # yichushihua = True
-        # logger.info("ChatGPT 初始化完成")
-        # return True
-
     except Exception as e:
         logger.error(f"为对话 {duihua_id} 创建标签页失败: {e}")
-        # guanbi_liulanqi()
         return None
 
 def tiwen_gpt(wenti: str, biaoqian: ChromiumPage) -> Optional[str]:
@@ -261,24 +265,14 @@ async def guanbi_gpt():
     logger.info("ChatGPT 已关闭")
 
 
-gpt = on_command("gpt", priority=10, block=True)
-
-
-@gpt.handle()
-async def gpt_mingling(matcher: Matcher,
-                       bot: Bot,
-                       event: Event,
-                       args: Message = CommandArg()):
-    wenti = args.extract_plain_text().strip()
-    if not wenti:
-        await matcher.finish("不能发送单个标点符号")
+async def handle_gpt_request(matcher: Matcher, event: Event, wenti: str):
+    """处理GPT请求、获取回答并发送"""
     if not yichushihua:
         await matcher.finish("ChatGPT 模块未准备就绪")
 
     try:
-        logger.info(f"处理问题: {wenti}")
         loop = asyncio.get_event_loop()
-        duihua_id = event.get_session_id()# 获取唯一会话ID
+        duihua_id = event.get_session_id()
         with concurrent.futures.ThreadPoolExecutor() as pool:
             dangqian_biaoqian = await loop.run_in_executor(pool, huoqu_huo_chuangjian_biaoqian, duihua_id)
 
@@ -286,7 +280,6 @@ async def gpt_mingling(matcher: Matcher,
             await matcher.finish("创建 ChatGPT 会话失败，请检查后台日志")
 
         logger.info(f"开始为对话 {duihua_id} 处理问题: {wenti}")
-
         with concurrent.futures.ThreadPoolExecutor() as pool:
             huida = await loop.run_in_executor(pool, tiwen_gpt, wenti, dangqian_biaoqian)
 
@@ -301,3 +294,31 @@ async def gpt_mingling(matcher: Matcher,
     except Exception as e:
         logger.error(f"GPT 处理失败: {e}")
         # await matcher.finish("GPT 模块异常")
+
+# 响应器1：处理群聊中的 /gpt 命令
+gpt_group = on_command("gpt", rule=is_group_message, priority=10, block=True)
+
+# 响应器2：处理私聊中的所有消息，创建一个新的 Matcher，不需要命令前缀
+gpt_private = on_message(rule=is_private_message, priority=99, block=True)
+
+# 处理器1：绑定到 gpt_group 响应器
+@gpt_group.handle()
+async def gpt_group_handler(matcher: Matcher, event: V11MessageEvent, args: Message = CommandArg()):
+    """群聊中的 /gpt 命令处理器"""
+    wenti = args.extract_plain_text().strip()
+    if not wenti:
+        await matcher.finish("不能发送单个标点符号")
+    # 在内部调用封装好的核心逻辑
+    await handle_gpt_request(matcher, event, wenti)
+
+# 处理器2：绑定到 gpt_private 响应器
+@gpt_private.handle()
+async def gpt_private_handler(matcher: Matcher, event: V11MessageEvent):
+    """私聊中的消息处理器"""
+    wenti = event.get_plaintext().strip()
+    # 过滤掉可能是其他命令的消息
+    command_start = list(get_driver().config.command_start)
+    if not wenti or (command_start and wenti.startswith(tuple(command_start))):
+        return
+    # 在内部调用封装好的核心逻辑
+    await handle_gpt_request(matcher, event, wenti)
