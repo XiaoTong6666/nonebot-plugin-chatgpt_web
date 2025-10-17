@@ -10,7 +10,7 @@ pipx install nb-cli
 nb adapter install nonebot-adapter-onebot
 ./start.sh
 ```
-##Docker
+## Docker
 ```
 docker run -d --name gpt-bot -p 5789:5789 -p 5910:5901 --add-host=host.docker.internal:host-gateway -v "$(pwd)/.env.prod:/app/.env.prod" -v "$(pwd)/data:/app/data" gpt-bot
 ```
