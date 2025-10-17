@@ -104,7 +104,11 @@ def chushihua_liulanqi_jincheng() -> bool:
           return True
         logger.info("在初始化 Chromium 进程喵ing...")
         co = ChromiumOptions().set_browser_path(peizhi.chromium_path)
-        co.set_user_data_path(os.path.expanduser("~/.config/chromium"))
+        co.set_user_data_path(peizhi.user_data_path)
+        if peizhi.proxy:
+            logger.info(f"检测到代理配置，正在设置代理喵: {peizhi.proxy}")
+            # 使用 set_proxy() 方法传递代理
+            co.set_proxy(peizhi.proxy)
         liulanqi = Chromium(co)
         yichushihua = True
         logger.info("Chromium 进程初始化完成了喵~")
@@ -134,7 +138,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
         biaoqian = liulanqi.new_tab()  # 先创建空白标签页
         logger.info(f"正在导航到 URL: {mubiao_url}")
         biaoqian.get(mubiao_url)  # 使用 get() 方法进行导航
-        biaoqian.ele("#prompt-textarea", timeout=20)
+        biaoqian.ele("#prompt-textarea", timeout=peizhi.element_timeout)
 
         zhuru_js = r"""
           (async () => {
@@ -412,7 +416,7 @@ async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: st
                 except Exception as e:
                     logger.warning(f"获取或更新URL失败喵qwq: {e}")
 
-            neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(huida, wenti)
+            neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(huida, wenti, zui_da_changdu=peizhi.max_response_length)
             for i, neirong in enumerate(neirong_liebiao):
                 if i < len(neirong_liebiao) - 1:
                     await matcher.send(neirong)
@@ -437,7 +441,7 @@ gpt_private = on_message(rule=is_private_message, priority=99, block=True)
 
 # 响应器3：处理群聊中的 @ 和 回复
 gpt_mention = on_message(
-    # 【核心修改】使用 Rule() 包装函数后再进行组合
+    # 使用 Rule() 包装函数后再进行组合
     rule=Rule(is_group_message) & Rule(is_mention_or_reply_to_me),
     priority=12,
     block=True
@@ -471,8 +475,7 @@ async def gpt_mention_handler(matcher: Matcher, bot: V11Bot, event: V11MessageEv
     # 提取纯文本消息
     wenti = event.get_plaintext().strip()
 
-    # --- 清理 @信息 ---
-    # 获取机器人的所有昵称配置
+    # 清理 @信息获取机器人的所有昵称配置
     nicknames = get_driver().config.nickname
     if isinstance(nicknames, str):
         nicknames = {nicknames}
