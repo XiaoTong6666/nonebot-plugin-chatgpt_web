@@ -123,9 +123,11 @@ def chushihua_liulanqi_jincheng() -> bool:
         co = ChromiumOptions().set_browser_path(peizhi.chromium_path)
         co.set_user_data_path(peizhi.user_data_path)
         if peizhi.proxy:
-            logger.info(f"检测到代理配置，正在设置代理喵: {peizhi.proxy}")
+            logger.info(f"有代理配置，在设置代理喵: {peizhi.proxy}")
             # 使用 set_proxy() 方法传递代理
             co.set_proxy(peizhi.proxy)
+        logger.info("咱加个 --no-sandbox 参数喵~")
+        co.set_argument('--no-sandbox')
         liulanqi = Chromium(co)
         yichushihua = True
         logger.info("Chromium 进程初始化完成了喵~")
@@ -134,7 +136,7 @@ def chushihua_liulanqi_jincheng() -> bool:
     except Exception as e:
         logger.error(f"浏览器进程初始化失败喵qwq：{e}")
         guanbi_liulanqi()
-        return True
+        return False
 
 def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
     """根据对话ID获取或创建新的标签页"""
