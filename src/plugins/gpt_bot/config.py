@@ -25,4 +25,4 @@ class Config(BaseModel):
     # 透明代理配置 格式: "protocol://ip:port"
     proxy: Optional[str] = None
     # 账号配置cookie
-    account_cookie: str = "data/zhanghao_cookie.json"
+    account_cookie: str = "data/zhanghao_cookies.json"
