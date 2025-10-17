@@ -3,7 +3,7 @@
 ## How to start
 
 ```
-apt install xvfb chromium fonts-wqy-zenhei #可选 tigervnc-standalone-server tigervnc-tools openbox
+apt install xvfb chromium fonts-wqy-zenhei #可选 tigervnc-standalone-server tigervnc-tools x11vnc openbox
 pip install -r requirements.txt
 pip install 'nonebot2[fastapi,httpx,websockets]'
 pipx install nb-cli
