@@ -24,3 +24,5 @@ class Config(BaseModel):
     conversation_mapping_file: str = "data/gpt_duihua.json"
     # 透明代理配置 格式: "protocol://ip:port"
     proxy: Optional[str] = None
+    # 账号配置cookie
+    account_cookie: str = "data/zhanghao_cookie.json"

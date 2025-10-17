@@ -33,7 +33,24 @@ liulanqi: Optional[Chromium] = None
 duihua_biaoqian_map: Dict[str, ChromiumPage] = {}
 yichushihua = False
 locked_sessions: Set[str] = set()
+zhanghao_cookie_list: Optional[list] = None
 duihua_id_to_url_map: Dict[str, str] = {}
+
+def zai_ru_zhanghao_cookie():
+    """在启动时从文件加载账号Cookie"""
+    global zhanghao_cookie_list
+    wenjian_lujing = peizhi.account_cookie
+    if os.path.exists(wenjian_lujing):
+        try:
+            with open(wenjian_lujing, "r", encoding="utf-8") as f:
+                zhanghao_cookie_list = json.load(f)
+            logger.info(f"成功加载了 {len(zhanghao_cookie_list)} 条Cookie喵~")
+        except Exception as e:
+            logger.error(f"加载账号Cookie文件失败了喵qwq: {e}")
+            zhanghao_cookie_list = None
+    else:
+        logger.warning(f"没找到账号Cookie文件喵: {wenjian_lujing}")
+        zhanghao_cookie_list = None
 
 def zai_ru_duihua_ying_she():
     """在启动时从文件加载对话ID与URL的映射关系"""
@@ -136,6 +153,15 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
     try:
         logger.info(f"在给 {duihua_id} 创建新标签页喵ing...")
         biaoqian = liulanqi.new_tab()  # 先创建空白标签页
+        # 检查全局变量中是否有已加载的Cookie
+        if zhanghao_cookie_list:
+            logger.info("检测到Cookie，正在尝试注入喵...")
+            try:
+                # 使用 set.cookies() 方法注入
+                biaoqian.set.cookies(zhanghao_cookie_list)
+                logger.info("Cookie注入成功了喵！")
+            except Exception as e:
+                logger.error(f"Cookie注入失败了喵qwq: {e}")
         logger.info(f"正在导航到 URL: {mubiao_url}")
         biaoqian.get(mubiao_url)  # 使用 get() 方法进行导航
         biaoqian.ele("#prompt-textarea", timeout=peizhi.element_timeout)
@@ -218,7 +244,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                             quanwen_raw += text_piece_raw;
                         }
 
-                        // --- 结束流处理 ---
+                        //结束流处理
                         if (shuju?.type === 'message_stream_complete' || shuju?.message?.status === 'finished_successfully') {
                           window.zuihouHuifu = quanwen.trim();
                           window.zuihouHuifu_raw_log = quanwen_raw.trim();
@@ -348,8 +374,14 @@ async def kaishi_gpt():
     with concurrent.futures.ThreadPoolExecutor() as pool:
         success = await loop.run_in_executor(pool, chushihua_liulanqi_jincheng)
     logger.info("初始化成功了喵~" if success else "初始化失败了喵qwq")
-    if success and peizhi.persist_conversations:
-        zai_ru_duihua_ying_she()
+    if success:
+        # 根据配置加载对话映射文件
+        if peizhi.persist_conversations:
+            zai_ru_duihua_ying_she()
+
+        # 根据配置加载Cookie
+        if peizhi.account_cookie:
+            zai_ru_zhanghao_cookie()
 
 @qudong.on_shutdown
 async def guanbi_gpt():
