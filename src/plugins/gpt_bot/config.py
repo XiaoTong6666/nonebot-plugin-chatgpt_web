@@ -12,9 +12,6 @@ class Config(BaseModel):
     # 用户数据目录
     user_data_path: str = os.path.expanduser("~/.config/chromium")
 
-    # ChatGPT网址
-    chatgpt_url: str = "https://chatgpt.com"
-
     # 是否在启动时自动初始化
     auto_init_on_startup: bool = True
 
@@ -54,3 +51,7 @@ class Config(BaseModel):
     # 如果设置为 True，则一个群内的所有人共用一个ChatGPT会话（标签页）
     # 如果设置为 False，则群内的每个人都有自己独立的会话（标签页）
     group_shared_mode: bool = True
+
+    # 对话持久化功能
+    persist_conversations: bool = True
+    conversation_mapping_file: str = "data/gpt_duihua.json"

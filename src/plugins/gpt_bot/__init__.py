@@ -2,6 +2,7 @@ import os
 import time
 import asyncio
 import concurrent.futures
+import json
 from typing import Optional, Dict, Set
 from nonebot import on_command, get_plugin_config, get_driver, on_message
 from nonebot.plugin import PluginMetadata
@@ -32,6 +33,35 @@ liulanqi: Optional[Chromium] = None
 duihua_biaoqian_map: Dict[str, ChromiumPage] = {}
 yichushihua = False
 locked_sessions: Set[str] = set()
+duihua_id_to_url_map: Dict[str, str] = {}
+
+def zai_ru_duihua_ying_she():
+    """在启动时从文件加载对话ID与URL的映射关系"""
+    global duihua_id_to_url_map
+    wenjian_lujing = peizhi.conversation_mapping_file
+    if os.path.exists(wenjian_lujing):
+        try:
+            with open(wenjian_lujing, "r", encoding="utf-8") as f:
+                duihua_id_to_url_map = json.load(f)
+            logger.info(f"成功加载了 {len(duihua_id_to_url_map)} 条对话映射喵~")
+        except Exception as e:
+            logger.error(f"加载对话映射文件失败了喵qwq: {e}")
+    else:
+        logger.info("没找到对话映射文件，将创建新的喵~")
+
+# 保存对话映射文件
+def bao_cun_duihua_ying_she():
+    """在关闭时将对话ID与URL的映射关系保存到文件"""
+    wenjian_lujing = peizhi.conversation_mapping_file
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(wenjian_lujing), exist_ok=True)
+        with open(wenjian_lujing, "w", encoding="utf-8") as f:
+            json.dump(duihua_id_to_url_map, f, ensure_ascii=False, indent=4)
+        logger.info(f"成功保存了 {len(duihua_id_to_url_map)} 条对话映射喵~")
+    except Exception as e:
+        logger.error(f"保存对话映射文件失败了喵qwq: {e}")
+
 
 def is_private_message(event: V11MessageEvent) -> bool:
     #真私聊
@@ -93,10 +123,17 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
         return None
     if duihua_id in duihua_biaoqian_map:
         return duihua_biaoqian_map[duihua_id]
+    mubiao_url = "https://chatgpt.com"
+    # 如果开启了持久化，并且映射表中存在该对话ID，则使用已记录的URL
+    if peizhi.persist_conversations and duihua_id in duihua_id_to_url_map:
+        mubiao_url = duihua_id_to_url_map[duihua_id]
+        logger.info(f"找到了持久化的对话URL，正在导航喵: {mubiao_url}")
 
     try:
-        logger.info(f"在给 {duihua_id} 创建 ChatGPT 标签页喵ing...")
-        biaoqian = liulanqi.new_tab(url="https://chatgpt.com")
+        logger.info(f"在给 {duihua_id} 创建新标签页喵ing...")
+        biaoqian = liulanqi.new_tab()  # 先创建空白标签页
+        logger.info(f"正在导航到 URL: {mubiao_url}")
+        biaoqian.get(mubiao_url)  # 使用 get() 方法进行导航
         biaoqian.ele("#prompt-textarea", timeout=20)
 
         zhuru_js = r"""
@@ -115,7 +152,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                 const duzhe = fuben.body.getReader();
                 const bianmaqi = new TextDecoder("utf-8");
 
-                // 【双轨制】定义两个变量
+                // 双轨制
                 let quanwen = "";           // 干净文本
                 let quanwen_raw = "";       // 原始文本
 
@@ -138,7 +175,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                       try {
                         const shuju = JSON.parse(hangRaw.replace(/^data:\s*/, ''));
                         let text_piece = '';
-                        let text_piece_raw = ''; // 【新增】原始片段
+                        let text_piece_raw = ''; // 原始片段
 
                         const operations = shuju.v || (shuju.o === 'patch' ? shuju.v : null);
 
@@ -161,7 +198,6 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                         }
 
                         // --- 轨道二：捕获所有文本片段用于调试 ---
-                        // 这是一个更宽松的捕获逻辑，类似于您最初的版本
                         if (Array.isArray(operations)) {
                           for (const i of operations) {
                             if (i?.o === 'append' && typeof i.v === 'string') {
@@ -195,7 +231,7 @@ def huoqu_huo_chuangjian_biaoqian(duihua_id: str) -> Optional[ChromiumPage]:
                   window.zuihouHuifu_raw_log = quanwen_raw.trim();
                 }
 
-                // 【可选】在控制台同时打印干净版和原始版，方便对比
+                // 在控制台同时打印干净版和原始版，方便对比
                 console.log('最终干净内容:', window.zuihouHuifu);
                 console.log('最终原始日志:', window.zuihouHuifu_raw_log);
 
@@ -308,10 +344,13 @@ async def kaishi_gpt():
     with concurrent.futures.ThreadPoolExecutor() as pool:
         success = await loop.run_in_executor(pool, chushihua_liulanqi_jincheng)
     logger.info("初始化成功了喵~" if success else "初始化失败了喵qwq")
-
+    if success and peizhi.persist_conversations:
+        zai_ru_duihua_ying_she()
 
 @qudong.on_shutdown
 async def guanbi_gpt():
+    if peizhi.persist_conversations:
+        bao_cun_duihua_ying_she()
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
         await loop.run_in_executor(pool, guanbi_liulanqi)
@@ -321,7 +360,7 @@ async def guanbi_gpt():
 async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: str):
     """处理GPT请求、获取回答并发送（支持群聊共享模式）"""
 
-    # --- 【核心修改点】根据配置决定会话ID ---
+    # --- 根据配置决定会话ID ---
     duihua_id: str
     is_real_group = event.message_type == "group" and event.user_id != event.group_id
 
@@ -331,7 +370,6 @@ async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: st
     else:
         # 其他情况（私聊、临时会话、或群聊关闭共享模式），使用原来的会话ID
         duihua_id = event.get_session_id()
-    # --- 修改结束 ---
 
     # 检查会话是否已被锁定
     if duihua_id in locked_sessions:
@@ -359,6 +397,21 @@ async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: st
         logger.info(f"尝试发送喵！: {huida}")
 
         if huida:
+            # 如果开启持久化，则在得到回答后，获取并更新URL
+            if peizhi.persist_conversations:
+                try:
+                    # 在后台线程中执行，不阻塞回复
+                    def geng_xin_url_ying_she():
+                        current_url = dangqian_biaoqian.run_js("return window.location.href;")
+                        # 只有当URL是有效的会话URL时才更新
+                        if "/c/" in current_url and duihua_id_to_url_map.get(duihua_id) != current_url:
+                            duihua_id_to_url_map[duihua_id] = current_url
+                            logger.info(f"为 {duihua_id} 更新/保存了对话URL喵: {current_url}")
+
+                    loop.run_in_executor(None, geng_xin_url_ying_she)
+                except Exception as e:
+                    logger.warning(f"获取或更新URL失败喵qwq: {e}")
+
             neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(huida, wenti)
             for i, neirong in enumerate(neirong_liebiao):
                 if i < len(neirong_liebiao) - 1:
