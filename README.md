@@ -2,6 +2,8 @@
 
 ## How to start
 
+需要使用Cookie-Editor获取浏览器cookies放到`data/zhanghao_cookies.json`
+
 ```
 apt install xvfb chromium fonts-wqy-zenhei #可选 tigervnc-standalone-server tigervnc-tools x11vnc openbox
 pip install -r requirements.txt
