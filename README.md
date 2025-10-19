@@ -22,6 +22,7 @@ nb adapter install nonebot-adapter-onebot
 ## Docker
 ```
 docker pull xiaotong666/gpt-bot:latest
+docker pull crpi-6symead8lcrbtpwr.cn-guangzhou.personal.cr.aliyuncs.com/xiaotong666/gpt-bot # 阿里云仓库
 docker run -d --name gpt-bot -p 5789:5789 -p 5910:5901 --add-host=host.docker.internal:host-gateway -v "$(pwd)/.env.prod:/app/.env.prod" -v "$(pwd)/data:/app/data" gpt-bot
 ```
 
