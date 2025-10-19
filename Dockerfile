@@ -1,7 +1,6 @@
 FROM python:3.11-slim
 
-RUN sed -i 's|http://deb.debian.org/debian|http://ftp.cn.debian.org/debian|g' /etc/apt/sources.list.d/debian.sources && \
-    sed -i 's|http://security.debian.org/debian-security|http://ftp.cn.debian.org/debian-security|g' /etc/apt/sources.list.d/debian.sources
+
 
 
 RUN apt update && \
@@ -26,9 +25,7 @@ RUN mkdir -p /root/.vnc && \
 COPY requirements.txt ./
 COPY pyproject.toml ./
 
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn && \
-    python3 -m pip install -r requirements.txt && \
+RUN python3 -m pip install -r requirements.txt && \
     python3 -m pipx ensurepath && \
     pipx install nb-cli && \
     /root/.local/bin/nb adapter install nonebot-adapter-onebot
