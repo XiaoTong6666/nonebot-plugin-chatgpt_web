@@ -4,7 +4,7 @@
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web
 ```
-需要使用Cookie-Editor获取浏览器cookies放到`data/zhanghao_cookies.json`
+需要使用Cookie-Editor获取浏览器cookies放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`
 ```
 apt install xvfb chromium fonts-wqy-zenhei #可选 tigervnc-standalone-server tigervnc-tools x11vnc openbox
 pip install -r requirements.txt
