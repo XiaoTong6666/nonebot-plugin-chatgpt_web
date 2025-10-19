@@ -1,7 +1,7 @@
 # nonebot-plugin-chatgpt_web
 
 ## How to start
-### local
+### Local
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web
 ```
