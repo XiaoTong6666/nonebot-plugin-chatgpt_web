@@ -1,6 +1,7 @@
 # nonebot-plugin-chatgpt_web
 
 ## How to start
+### local
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web
 ```
@@ -19,7 +20,7 @@ nb adapter install nonebot-adapter-onebot
 2. create your plugin using `nb plugin create` .
 3. writing your plugins under `gpt-bot/plugins` folder.
 4. run your bot using `nb run --reload` .
-## Docker
+### Docker
 ```
 docker pull xiaotong666/gpt-bot:latest
 # 阿里云仓库
