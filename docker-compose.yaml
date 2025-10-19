@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  gpt-bot:
+    image: xiaotong666/gpt-bot:latest
+    container_name: gpt-bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./.env.prod:/app/.env.prod
+    ports:
+      - "5789:5789"
+      - "5910:5901"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  data:
