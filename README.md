@@ -9,9 +9,9 @@ git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web $HOME/noneb
 其次是需要使用Cookie-Editor浏览器插件获取登录状态下的ChatGPT官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot实现配置
 ### 本地
 ```
-apt install chromium fonts-wqy-zenhei 
+apt install chromium fonts-wqy-zenhei openbox
 # 如果是无头环境还需要
-apt install xvfb x11vnc openbox # 无头组合1
+apt install xvfb x11vnc # 无头组合1
 apt install tigervnc-standalone-server tigervnc-tools # 无头组合2
 pip install -r requirements.txt
 pipx install nb-cli
