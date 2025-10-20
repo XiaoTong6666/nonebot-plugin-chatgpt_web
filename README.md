@@ -1,4 +1,4 @@
-# nonebot-plugin-chatgpt_web
+# chatgpt_web的nonebot插件
 这是一个基于[NoneBot2](https://nonebot.dev/)的[ChatGPT](https://chatgpt.com/)网页自动化插件是一款无需API Key的高效bot插件，通过[DrissionPage](https://drissionpage.cn/)自动化驱动[Chromium](https://www.chromium.org/)内核的浏览器与[ChatGPT](https://chatgpt.com/)的Web官网交互，实现与官方几乎同步的对话功能。它支持多会话隔离或群聊共享、消息唤醒、会话持久化与Cookie登录，所有行为可通过配置文件灵活控制；内置并发锁与智能分段回复机制，稳定性强且便于调试，非常适合希望免费使用ChatGPT5/5mini模型的机器人场景    
 
 ## 如何使用？
