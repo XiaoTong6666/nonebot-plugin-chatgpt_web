@@ -1,12 +1,12 @@
 # nonebot-plugin-chatgpt_web
-这是一个基于NoneBot2的ChatGPT网页自动化插件是一款无需API Key的高效bot插件，通过DrissionPage自动化驱动Chromium内核的浏览器与ChatGPT的Web官网交互，实现与官方几乎同步的对话功能。它支持多会话隔离或群聊共享、消息唤醒、会话持久化与Cookie登录，所有行为可通过配置文件灵活控制；内置并发锁与智能分段回复机制，稳定性强且便于调试，非常适合希望免费使用ChatGPT5/5mini模型的机器人场景    
+这是一个基于[NoneBot2](https://nonebot.dev/)的(ChatGPT)[https://chatgpt.com/]网页自动化插件是一款无需API Key的高效bot插件，通过(DrissionPage)[https://drissionpage.cn/]自动化驱动(Chromium)[https://www.chromium.org/]内核的浏览器与(ChatGPT)[https://chatgpt.com/]的Web官网交互，实现与官方几乎同步的对话功能。它支持多会话隔离或群聊共享、消息唤醒、会话持久化与Cookie登录，所有行为可通过配置文件灵活控制；内置并发锁与智能分段回复机制，稳定性强且便于调试，非常适合希望免费使用ChatGPT5/5mini模型的机器人场景    
 
 ## 如何使用？
 本地还是Docker都建议clone一下仓库，因为内包含配置文件（省事
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web $HOME/nonebot-plugin-chatgpt_web
 ```
-其次是需要使用[Cookie-Editor](https://cookie-editor.com/)浏览器插件获取(export/导出)登录状态下的[ChatGPT](https://chatgpt.com)官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot实现配置）默认是onebot实现反向ws://127.0.0.1:5789/onebot/v11/ws
+其次是需要使用[Cookie-Editor](https://cookie-editor.com/)浏览器插件获取(export/导出)登录状态下的[ChatGPT](https://chatgpt.com/)官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot实现配置）默认是onebot实现反向ws://127.0.0.1:5789/onebot/v11/ws
 ### 本地
 ```
 apt install chromium fonts-wqy-zenhei openbox
