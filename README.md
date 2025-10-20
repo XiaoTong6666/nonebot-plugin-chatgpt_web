@@ -24,6 +24,10 @@ chmod +x start.sh
 3. writing your plugins under `gpt-bot/plugins` folder.
 4. run your bot using `nb run --reload` .
 ### Docker容器部署（推荐
+安装Docker
+```
+apt install docker.io
+```
 确保存在并配置好`$HOME/nonebot-plugin-chatgpt_web`
 #### Docker hub
 ```
