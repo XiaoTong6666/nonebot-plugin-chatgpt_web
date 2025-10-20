@@ -26,7 +26,7 @@ nb adapter install nonebot-adapter-onebot
 ```
 cd $HOME/nonebot-plugin-chatgpt_web
 ```
-#### Docker hub仓库
+#### Docker hub
 ```
 docker pull xiaotong666/gpt-bot:latest
 docker run -d --name gpt-bot -p 5789:5789 -p 5910:5901 --add-host=host.docker.internal:host-gateway -v "$(pwd)/.env.prod:/app/.env.prod" -v "$(pwd)/data:/app/data" gpt-bot
