@@ -16,6 +16,7 @@ apt install tigervnc-standalone-server tigervnc-tools # 无头组合2
 pip install -r requirements.txt
 pipx install nb-cli
 nb adapter install nonebot-adapter-onebot
+chmod +x start.sh
 ./start.sh
 ```
 1. generate project using `nb create` .
