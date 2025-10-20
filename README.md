@@ -34,7 +34,7 @@ docker run -d --name gpt-bot -p 5789:5789 -p 5910:5901 --add-host=host.docker.in
 docker pull crpi-6symead8lcrbtpwr.cn-guangzhou.personal.cr.aliyuncs.com/xiaotong666/gpt-bot
 docker run -d --name gpt-bot -p 5789:5789 -p 5910:5901 --add-host=host.docker.internal:host-gateway -v "$HOME/nonebot-plugin-chatgpt_web/.env.prod:/app/.env.prod" -v "$HOME/nonebot-plugin-chatgpt_web/data:/app/data" crpi-6symead8lcrbtpwr.cn-guangzhou.personal.cr.aliyuncs.com/xiaotong666/gpt-bot
 ```
-#### 手动构建Docker镜像
+### 手动构建Docker镜像
 如果你在的服务器中国（使用国内镜像源）
 ```
 docker build -t gpt-bot . -f Dockerfile_CN
