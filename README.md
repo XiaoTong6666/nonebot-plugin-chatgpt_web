@@ -1,13 +1,13 @@
 # nonebot-plugin-chatgpt_web
-这是一个基于NoneBot2的ChatGPT网页自动化插件是一款无需API Key的高效bot插件，通过DrissionPage自动化驱动Chromium浏览器与ChatGPT的Web官网交互，实现与官方几乎同步的对话功能。它支持多会话隔离或群聊共享、消息唤醒、会话持久化与Cookie登录，所有行为可通过配置文件灵活控制；内置并发锁与智能分段回复机制，稳定性强且便于调试，非常适合希望免费使用ChatGPT5/5mini模型的机器人场景    
+这是一个基于NoneBot2的ChatGPT网页自动化插件是一款无需API Key的高效bot插件，通过DrissionPage自动化驱动Chromium内核的浏览器与ChatGPT的Web官网交互，实现与官方几乎同步的对话功能。它支持多会话隔离或群聊共享、消息唤醒、会话持久化与Cookie登录，所有行为可通过配置文件灵活控制；内置并发锁与智能分段回复机制，稳定性强且便于调试，非常适合希望免费使用ChatGPT5/5mini模型的机器人场景    
 
-## How to start
+## 如何使用？
 本地还是Docker都建议clone一下仓库，因为内包含配置文件（省事
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web $HOME/nonebot-plugin-chatgpt_web
 ```
-其次是需要使用Cookie-Editor浏览器插件获取浏览器cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot配置）
-### Local
+其次是需要使用Cookie-Editor浏览器插件获取登录状态下的ChatGPT官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot实现配置
+### 本地
 ```
 apt install chromium fonts-wqy-zenhei 
 # 如果是无头环境还需要
@@ -22,7 +22,7 @@ nb adapter install nonebot-adapter-onebot
 2. create your plugin using `nb plugin create` .
 3. writing your plugins under `gpt-bot/plugins` folder.
 4. run your bot using `nb run --reload` .
-### Docker
+### Docker容器部署（推荐
 ```
 cd $HOME/nonebot-plugin-chatgpt_web
 ```
