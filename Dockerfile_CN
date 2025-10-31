@@ -12,8 +12,10 @@ RUN apt update && \
     tigervnc-tools \
     openbox \
     fonts-wqy-zenhei \
+    ca-certificates \
     x11vnc && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    update-ca-certificates
 
 WORKDIR /app
 
@@ -26,8 +28,8 @@ RUN mkdir -p /root/.vnc && \
 COPY requirements.txt ./
 COPY pyproject.toml ./
 
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn && \
+RUN python3 -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     python3 -m pip install -r requirements.txt && \
     python3 -m pipx ensurepath && \
     pipx install nb-cli && \
