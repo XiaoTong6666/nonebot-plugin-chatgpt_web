@@ -3,7 +3,7 @@ import time
 import asyncio
 import concurrent.futures
 import json
-from typing import Optional, Dict, Set
+from typing import Optional, Dict, Set, Union
 from nonebot import on_command, get_plugin_config, get_driver, on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters import Message, Event, Bot
@@ -15,6 +15,8 @@ from DrissionPage import Chromium, ChromiumOptions, ChromiumPage
 from .config import Config
 from .message_formatter import MessageFormatter
 from nonebot.adapters.onebot.v11 import MessageEvent as V11MessageEvent, Bot as V11Bot
+from nonebot.adapters.telegram import Bot as TelegramBot
+from nonebot.adapters.telegram.event import MessageEvent as TelegramMessageEvent
 
 __plugin_meta__ = PluginMetadata(
     name="gpt-bot",
@@ -79,38 +81,40 @@ def bao_cun_duihua_ying_she():
     except Exception as e:
         logger.error(f"保存对话映射文件失败了喵qwq: {e}")
 
+def is_private_message(event: Event) -> bool:
+    """规则：判断消息是否来自私聊（适配 V11 和 Telegram）"""
+    if isinstance(event, V11MessageEvent):
+        return event.message_type == "private" or (
+            event.message_type == "group" and event.user_id == event.group_id
+        )
+    if isinstance(event, TelegramMessageEvent):
+        return event.chat.type == "private"
+    return False
 
-def is_private_message(event: V11MessageEvent) -> bool:
-    #真私聊
-    is_true_private = event.message_type == "private"
-    #双id同
-    is_temp_session = (
-        event.message_type == "group" and
-        event.user_id == event.group_id
-    )
+def is_group_message(event: Event) -> bool:
+    """规则：判断消息是否来自真实的群聊（适配 V11 和 Telegram）"""
+    if isinstance(event, V11MessageEvent):
+        return event.message_type == "group" and event.user_id != event.group_id
+    if isinstance(event, TelegramMessageEvent):
+        return event.chat.type in ("group", "supergroup")
+    return False
 
-    return is_true_private or is_temp_session
+def is_mention_or_reply_to_me(bot: Bot, event: Event) -> bool:
+    """规则：判断消息是否 @机器人 或 回复机器人"""
+    if isinstance(event, V11MessageEvent) and isinstance(bot, V11Bot):
+        return event.is_tome() or (event.reply and event.reply.sender.user_id == int(bot.self_id))
 
-def is_group_message(event: V11MessageEvent) -> bool:
-    """规则：判断消息是否来自真实的群聊（排除临时会话）"""
-    return (
-        event.message_type == "group" and
-        hasattr(event, 'group_id') and
-        event.user_id != event.group_id
-    )
+    if isinstance(event, TelegramMessageEvent) and isinstance(bot, TelegramBot):
+        # 1. 检查 @
+        if bot.username and event.get_plaintext().startswith(f"@{bot.username}"):
+            return True
+        # 2. 检查回复
+        if event.reply_to_message and event.reply_to_message.from_:
+            if event.reply_to_message.from_.id == bot.id:
+                return True
+        return False
 
-def is_mention_or_reply_to_me(bot: V11Bot, event: V11MessageEvent) -> bool:
-    """
-    规则：判断消息是否 @机器人 或 回复机器人
-    """
-    # 检查消息中是否有 @我 的信息
-    if event.is_tome():
-        return True
-
-    # 检查消息是否回复了我
-    if event.reply and event.reply.sender.user_id == int(bot.self_id):
-        return True
-
+    # 如果事件类型不匹配，默认返回 False
     return False
 
 def chushihua_liulanqi_jincheng() -> bool:
@@ -395,18 +399,23 @@ async def guanbi_gpt():
     logger.info("已关闭喵~")
 
 
-async def handle_gpt_request(matcher: Matcher, event: V11MessageEvent, wenti: str):
+async def handle_gpt_request(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent], wenti: str):
     """处理GPT请求、获取回答并发送（支持群聊共享模式）"""
 
     # --- 根据配置决定会话ID ---
     duihua_id: str
-    is_real_group = event.message_type == "group" and event.user_id != event.group_id
+    is_real_group = False
+    if isinstance(event, V11MessageEvent) and event.message_type == "group" and event.user_id != event.group_id:
+        is_real_group = True
+        if peizhi.group_shared_mode:
+            duihua_id = f"group_v11_{event.group_id}"
+    elif isinstance(event, TelegramMessageEvent) and event.chat.type in ("group", "supergroup"):
+        is_real_group = True
+        if peizhi.group_shared_mode:
+            duihua_id = f"group_tg_{event.chat.id}"
 
-    if is_real_group and peizhi.group_shared_mode:
-        # 如果是真实群聊，并且开启了共享模式，则使用群号作为ID
-        duihua_id = f"group_{event.group_id}"
-    else:
-        # 其他情况（私聊、临时会话、或群聊关闭共享模式），使用原来的会话ID
+    if not is_real_group or not peizhi.group_shared_mode:
+        # 其他情况（私聊、或群聊关闭共享模式），使用原来的会话ID
         duihua_id = event.get_session_id()
 
     # 检查会话是否已被锁定
@@ -483,7 +492,7 @@ gpt_mention = on_message(
 
 # 处理器1：绑定到 gpt_group 响应器
 @gpt_group.handle()
-async def gpt_group_handler(matcher: Matcher, event: V11MessageEvent, args: Message = CommandArg()):
+async def gpt_group_handler(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent], args: Message = CommandArg()):
     """群聊中的 /gpt 命令处理器"""
     wenti = args.extract_plain_text().strip()
     if not wenti:
@@ -493,7 +502,7 @@ async def gpt_group_handler(matcher: Matcher, event: V11MessageEvent, args: Mess
 
 # 处理器2：绑定到 gpt_private 响应器
 @gpt_private.handle()
-async def gpt_private_handler(matcher: Matcher, event: V11MessageEvent):
+async def gpt_private_handler(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent]):
     """私聊中的消息处理器"""
     wenti = event.get_plaintext().strip()
     # 过滤掉可能是其他命令的消息
@@ -504,21 +513,22 @@ async def gpt_private_handler(matcher: Matcher, event: V11MessageEvent):
     await handle_gpt_request(matcher, event, wenti)
 
 @gpt_mention.handle()
-async def gpt_mention_handler(matcher: Matcher, bot: V11Bot, event: V11MessageEvent):
+async def gpt_mention_handler(matcher: Matcher, bot: Union[V11Bot, TelegramBot], event: Union[V11MessageEvent, TelegramMessageEvent]):
     """群聊中 @机器人 或 回复机器人 的处理器"""
     # 提取纯文本消息
     wenti = event.get_plaintext().strip()
 
-    # 清理 @信息获取机器人的所有昵称配置
-    nicknames = get_driver().config.nickname
-    if isinstance(nicknames, str):
-        nicknames = {nicknames}
-
-    # 移除 @昵称 的部分
-    for nickname in nicknames:
-        if wenti.startswith(f"@{nickname}"):
-            wenti = wenti.replace(f"@{nickname}", "", 1).strip()
-            break # 找到并移除后就停止
+    if isinstance(bot, V11Bot):
+        nicknames = get_driver().config.nickname
+        if isinstance(nicknames, str):
+            nicknames = {nicknames}
+        for nickname in nicknames:
+            if wenti.startswith(f"@{nickname}"):
+                wenti = wenti.replace(f"@{nickname}", "", 1).strip()
+                break
+    elif isinstance(bot, TelegramBot):
+        if bot.username and wenti.startswith(f"@{bot.username}"):
+            wenti = wenti.replace(f"@{bot.username}", "", 1).strip()
 
     # 如果清理后问题为空，则不响应
     if not wenti:

@@ -12,10 +12,8 @@ RUN apt update && \
     tigervnc-tools \
     openbox \
     fonts-wqy-zenhei \
-    ca-certificates \
     x11vnc && \
-    rm -rf /var/lib/apt/lists/* && \
-    update-ca-certificates
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -29,11 +27,11 @@ COPY requirements.txt ./
 COPY pyproject.toml ./
 
 RUN python3 -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     python3 -m pip install -r requirements.txt && \
     python3 -m pipx ensurepath && \
     pipx install nb-cli && \
-    /root/.local/bin/nb adapter install nonebot-adapter-onebot
+    /root/.local/bin/nb adapter install nonebot-adapter-onebot && \
+    /root/.local/bin/nb adapter install nonebot-adapter-telegram
 
 COPY src/ ./src/
 COPY start.sh ./

@@ -25,7 +25,8 @@ COPY pyproject.toml ./
 RUN python3 -m pip install -r requirements.txt && \
     python3 -m pipx ensurepath && \
     pipx install nb-cli && \
-    /root/.local/bin/nb adapter install nonebot-adapter-onebot
+    /root/.local/bin/nb adapter install nonebot-adapter-onebot && \
+    /root/.local/bin/nb adapter install nonebot-adapter-telegram
 
 COPY src/ ./src/
 COPY start.sh ./
