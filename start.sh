@@ -32,7 +32,7 @@ if [ "$n" = "1" ]; then
     Xvfb :1 -screen 0 1280x720x24 &
     export DISPLAY=:1
     sleep 2
-    x11vnc -rfbport 5910 -display :1 -rfbauth /root/.vnc/passwd -forever -listen 0.0.0.0 &
+    x11vnc -rfbport 5901 -display :1 -rfbauth /root/.vnc/passwd -forever -listen 0.0.0.0 &
     sleep 1
     openbox &
     echo "正在启动NoneBot喵ing..."
