@@ -6,7 +6,7 @@
 ```
 git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web $HOME/nonebot-plugin-chatgpt_web
 ```
-其次是需要使用[Cookie-Editor](https://cookie-editor.com/)浏览器插件获取(export/导出)登录状态下的[ChatGPT](https://chatgpt.com/)官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件`.env.prod`（包括代理配置，连接onebot实现配置）默认是onebot实现反向`ws://127.0.0.1:5789/onebot/v11/ws`
+其次是需要使用[Cookie-Editor](https://cookie-editor.com/)浏览器插件获取(export/导出)登录状态下的[ChatGPT](https://chatgpt.com/)官网的cookie的json放到`data/zhanghao_cookies.json`,根据实际情况修改配置文件[.env.prod](https://raw.githubusercontent.com/XiaoTong6666/nonebot-plugin-chatgpt_web/refs/heads/main/.env.prod)（包括代理配置，连接onebot实现配置）默认是onebot实现反向`ws://127.0.0.1:5789/onebot/v11/ws`
 ### 本地
 ```
 apt install chromium fonts-wqy-zenhei openbox
