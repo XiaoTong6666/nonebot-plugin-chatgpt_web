@@ -11,8 +11,8 @@ git clone https://github.com/XiaoTong6666/nonebot-plugin-chatgpt_web $HOME/noneb
 ```
 apt install chromium fonts-wqy-zenhei openbox
 # 如果是无头环境还需要
-apt install xvfb x11vnc # 无头组合1
-apt install tigervnc-standalone-server tigervnc-tools # 无头组合2
+apt install xvfb x11vnc # 无头组合1 不推荐
+apt install tigervnc-standalone-server tigervnc-tools # 无头组合2 推荐使用
 pip install -r requirements.txt
 pipx install nb-cli
 nb adapter install nonebot-adapter-onebot
