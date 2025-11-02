@@ -16,6 +16,7 @@ apt install tigervnc-standalone-server tigervnc-tools # 无头组合2 推荐使�
 pip install -r requirements.txt
 pipx install nb-cli
 nb adapter install nonebot-adapter-onebot
+echo "1145141919810" | vncpasswd -f > /root/.config/tigervnc
 chmod +x start.sh
 ./start.sh
 ```
