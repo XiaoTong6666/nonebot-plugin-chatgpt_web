@@ -14,7 +14,7 @@ RUN apt update && \
 WORKDIR /app
 
 RUN mkdir -p /root/.vnc && \
-    echo "123456" | vncpasswd -f > /root/.vnc/passwd && \
+    echo "1145141919810" | vncpasswd -f > /root/.vnc/passwd && \
     chmod 600 /root/.vnc/passwd && \
     mkdir /root/.config && \
     cp -r /root/.vnc /root/.config/tigervnc
