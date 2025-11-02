@@ -42,11 +42,11 @@ docker run -d --name gpt-bot -p 5789:5789 --add-host=host.docker.internal:host-g
 ### 手动构建Docker镜像
 如果你在的服务器中国（使用国内镜像源）
 ```
-docker build -t gpt-bot $HOME/nonebot-plugin-chatgpt_web -f Dockerfile_CN
+docker build -t gpt-bot $HOME/nonebot-plugin-chatgpt_web --network=host -f Dockerfile_CN
 ```
 如果非中国（使用官方源）
 ```
-docker build -t gpt-bot $HOME/nonebot-plugin-chatgpt_web -f Dockerfile
+docker build -t gpt-bot $HOME/nonebot-plugin-chatgpt_web --network=host -f Dockerfile
 ```
 Docker run
 ```
