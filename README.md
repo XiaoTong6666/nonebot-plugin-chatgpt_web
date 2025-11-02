@@ -53,6 +53,7 @@ Docker run
 docker run -d --name gpt-bot -p 5789:5789 --add-host=host.docker.internal:host-gateway -v "$HOME/nonebot-plugin-chatgpt_web/.env.prod:/app/.env.prod" -v "$HOME/nonebot-plugin-chatgpt_web/data:/app/data" gpt-bot
 ```
 ### 停止Docker进程
+不能直接使用docker stop，需要使用下面命令
 ```
 docker exec gpt-bot pkill -2 -f "nb"
 ```
