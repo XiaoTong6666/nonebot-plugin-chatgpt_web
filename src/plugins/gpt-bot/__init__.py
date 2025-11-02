@@ -12,9 +12,12 @@ from nonebot.matcher import Matcher
 from nonebot.log import logger
 from nonebot.rule import Rule
 from DrissionPage import Chromium, ChromiumOptions, ChromiumPage
-from .config import Config
+from .config import Config, MergeForwardMode
 from .message_formatter import MessageFormatter
-from nonebot.adapters.onebot.v11 import MessageEvent as V11MessageEvent, Bot as V11Bot
+from nonebot.adapters.onebot.v11 import (
+    MessageEvent as V11MessageEvent,
+    Bot as V11Bot,
+)
 from nonebot.adapters.telegram import Bot as TelegramBot
 from nonebot.adapters.telegram.event import MessageEvent as TelegramMessageEvent
 
@@ -399,7 +402,51 @@ async def guanbi_gpt():
     logger.info("已关闭喵~")
 
 
-async def handle_gpt_request(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent], wenti: str):
+async def send_merge_forward_v11(bot: V11Bot, event: V11MessageEvent, neirong_liebiao: list[str]) -> bool:
+    """使用 OneBot V11 的合并转发功能发送消息"""
+    if not neirong_liebiao:
+        return False
+
+    nickname = peizhi.merge_forward_nickname or "ChatGPT"
+    nodes = []
+    for duanluo in neirong_liebiao:
+        zhengli = duanluo.strip()
+        if not zhengli:
+            continue
+        nodes.append(
+            {
+                "type": "node",
+                "data": {
+                    "name": nickname,
+                    "uin": str(bot.self_id),
+                    "content": zhengli,
+                },
+            }
+        )
+
+    if not nodes:
+        return False
+
+    try:
+        if event.message_type == "group":
+            await bot.call_api(
+                "send_group_forward_msg",
+                group_id=event.group_id,
+                messages=nodes,
+            )
+        else:
+            await bot.call_api(
+                "send_private_forward_msg",
+                user_id=event.user_id,
+                messages=nodes,
+            )
+        return True
+    except Exception as e:
+        logger.warning(f"发送合并转发失败了喵qwq: {e}")
+        return False
+
+
+async def handle_gpt_request(matcher: Matcher, bot: Union[V11Bot, TelegramBot], event: Union[V11MessageEvent, TelegramMessageEvent], wenti: str):
     """处理GPT请求、获取回答并发送（支持群聊共享模式）"""
 
     # --- 根据配置决定会话ID ---
@@ -459,7 +506,33 @@ async def handle_gpt_request(matcher: Matcher, event: Union[V11MessageEvent, Tel
                 except Exception as e:
                     logger.warning(f"获取或更新URL失败喵qwq: {e}")
 
-            neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(huida, wenti, zui_da_changdu=peizhi.max_response_length)
+            neirong_liebiao = MessageFormatter.gezhihua_gpt_huida(
+                huida, wenti, zui_da_changdu=peizhi.max_response_length
+            )
+
+            zongchang = sum(len(item) for item in neirong_liebiao)
+            yao_hebing = False
+
+            if isinstance(bot, V11Bot):
+                if peizhi.merge_forward_mode == MergeForwardMode.always:
+                    yao_hebing = True
+                elif peizhi.merge_forward_mode == MergeForwardMode.auto:
+                    threshold = peizhi.merge_forward_threshold
+                    if threshold <= 0:
+                        yao_hebing = zongchang > 0
+                    else:
+                        yao_hebing = zongchang >= threshold
+
+            elif peizhi.merge_forward_mode in (MergeForwardMode.always, MergeForwardMode.auto):
+                logger.debug("当前适配器不支持合并转发，将退回直发模式喵~")
+
+            if yao_hebing and isinstance(bot, V11Bot):
+                fa_song_chenggong = await send_merge_forward_v11(bot, event, neirong_liebiao)
+                if fa_song_chenggong:
+                    await matcher.finish()
+                else:
+                    logger.warning("合并转发失败，将改为逐条发送喵~")
+
             for i, neirong in enumerate(neirong_liebiao):
                 if i < len(neirong_liebiao) - 1:
                     await matcher.send(neirong)
@@ -492,17 +565,17 @@ gpt_mention = on_message(
 
 # 处理器1：绑定到 gpt_group 响应器
 @gpt_group.handle()
-async def gpt_group_handler(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent], args: Message = CommandArg()):
+async def gpt_group_handler(matcher: Matcher, bot: Union[V11Bot, TelegramBot], event: Union[V11MessageEvent, TelegramMessageEvent], args: Message = CommandArg()):
     """群聊中的 /gpt 命令处理器"""
     wenti = args.extract_plain_text().strip()
     if not wenti:
         await matcher.finish("发送空白内容打咩")
     # 在内部调用封装好的核心逻辑
-    await handle_gpt_request(matcher, event, wenti)
+    await handle_gpt_request(matcher, bot, event, wenti)
 
 # 处理器2：绑定到 gpt_private 响应器
 @gpt_private.handle()
-async def gpt_private_handler(matcher: Matcher, event: Union[V11MessageEvent, TelegramMessageEvent]):
+async def gpt_private_handler(matcher: Matcher, bot: Union[V11Bot, TelegramBot], event: Union[V11MessageEvent, TelegramMessageEvent]):
     """私聊中的消息处理器"""
     wenti = event.get_plaintext().strip()
     # 过滤掉可能是其他命令的消息
@@ -510,7 +583,7 @@ async def gpt_private_handler(matcher: Matcher, event: Union[V11MessageEvent, Te
     if not wenti or (command_start and wenti.startswith(tuple(command_start))):
         return
     # 在内部调用封装好的核心逻辑
-    await handle_gpt_request(matcher, event, wenti)
+    await handle_gpt_request(matcher, bot, event, wenti)
 
 @gpt_mention.handle()
 async def gpt_mention_handler(matcher: Matcher, bot: Union[V11Bot, TelegramBot], event: Union[V11MessageEvent, TelegramMessageEvent]):
@@ -535,4 +608,4 @@ async def gpt_mention_handler(matcher: Matcher, bot: Union[V11Bot, TelegramBot],
         return
 
     # 调用封装好的核心逻辑
-    await handle_gpt_request(matcher, event, wenti)
+    await handle_gpt_request(matcher, bot, event, wenti)

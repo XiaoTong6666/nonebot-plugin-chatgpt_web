@@ -1,6 +1,14 @@
+from enum import Enum
 from pydantic import BaseModel
 from typing import Optional
 import os
+
+class MergeForwardMode(str, Enum):
+    """合并转发模式"""
+    auto = "auto"
+    always = "always"
+    never = "never"
+
 
 class Config(BaseModel):
 
@@ -10,7 +18,7 @@ class Config(BaseModel):
     # 等待页面元素加载的超时时间
     element_timeout: int = 20
     # 等待ChatGPT生成回答的超时时间
-    response_timeout: int = 60
+    response_timeout: int = 70
 
     # 单条消息的最大长度（用于自动分段）
     max_response_length: int = 2000
@@ -26,3 +34,8 @@ class Config(BaseModel):
     proxy: Optional[str] = None
     # 账号配置cookie
     account_cookie: str = "data/zhanghao_cookies.json"
+
+    # 合并转发配置
+    merge_forward_mode: MergeForwardMode = MergeForwardMode.auto
+    merge_forward_threshold: int = 1500
+    merge_forward_nickname: str = "ChatGPT"
