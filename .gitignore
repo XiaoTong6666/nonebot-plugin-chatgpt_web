@@ -1,3 +1,5 @@
 data/zhanghao_cookie.json
 src/plugins/gpt-bot/__pycache__/
 data/gpt_duihua.json
+.env.prod
+
